@@ -25,9 +25,18 @@ interface FormData {
 export default function PacientList() {
   const [pacientes, setPacientes] = useState<Usuario[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedPaciente, setSelectedPaciente] = useState<Usuario | null>(null);
   const [formData, setFormData] = useState<FormData>({
+    run: "",
+    nombre_completo: "",
+    apellido_completo: "",
+    correo: "",
+    sexo: "",
+    fecha_nacimiento: "",
+  });
+  const [editFormData, setEditFormData] = useState<FormData>({
     run: "",
     nombre_completo: "",
     apellido_completo: "",
@@ -107,6 +116,16 @@ export default function PacientList() {
     }));
   };
 
+  const handleEditInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setEditFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
   const handleVer = (id: number) => {
     const paciente = pacientes.find((p) => p.id_usuario === id);
     if (paciente) {
@@ -121,7 +140,67 @@ export default function PacientList() {
   };
 
   const handleEditar = (id: number) => {
-    alert(`Editar paciente ${id}`);
+    const paciente = pacientes.find((p) => p.id_usuario === id);
+    if (paciente) {
+      setSelectedPaciente(paciente);
+      setEditFormData({
+        run: paciente.run,
+        nombre_completo: paciente.nombre_completo,
+        apellido_completo: paciente.apellido_completo,
+        correo: paciente.correo,
+        sexo: paciente.sexo,
+        fecha_nacimiento: paciente.fecha_nacimiento,
+      });
+      setShowEditModal(true);
+    }
+  };
+
+  const handleCancelarEditar = () => {
+    setShowEditModal(false);
+    setSelectedPaciente(null);
+    setEditFormData({
+      run: "",
+      nombre_completo: "",
+      apellido_completo: "",
+      correo: "",
+      sexo: "",
+      fecha_nacimiento: "",
+    });
+  };
+
+  const handleGuardarEditar = async () => {
+    if (!selectedPaciente) return;
+
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/usuario/${selectedPaciente.id_usuario}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(editFormData),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Error al actualizar el paciente");
+      }
+
+      const pacienteActualizado = await response.json();
+      setPacientes(
+        pacientes.map((p) =>
+          p.id_usuario === selectedPaciente.id_usuario
+            ? { ...p, ...editFormData }
+            : p
+        )
+      );
+      handleCancelarEditar();
+      alert("Paciente actualizado exitosamente");
+    } catch (e) {
+      console.error(e);
+      alert("Error al actualizar el paciente");
+    }
   };
 
   const handleEliminar = (id: number) => {
@@ -357,6 +436,136 @@ export default function PacientList() {
                 <button
                   onClick={handleGuardar}
                   className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors font-medium shadow-md"
+                >
+                  Guardar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para editar paciente */}
+      {showEditModal && selectedPaciente && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl mx-4">
+            {/* Header del Modal */}
+            <div className="bg-green-600 text-white px-6 py-4 rounded-t-lg flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Editar Paciente</h2>
+              <button
+                onClick={handleCancelarEditar}
+                className="hover:bg-green-700 rounded-full p-1 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Formulario */}
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Carnet de Identidad */}
+                <div className="col-span-1">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Carnet de Identidad
+                  </label>
+                  <input
+                    type="text"
+                    name="run"
+                    value={editFormData.run}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                    placeholder="Ej: 12345678-9"
+                  />
+                </div>
+
+                {/* Nombres */}
+                <div className="col-span-1">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Nombres
+                  </label>
+                  <input
+                    type="text"
+                    name="nombre_completo"
+                    value={editFormData.nombre_completo}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                    placeholder="Ej: Juan Carlos"
+                  />
+                </div>
+
+                {/* Apellidos */}
+                <div className="col-span-1">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Apellidos
+                  </label>
+                  <input
+                    type="text"
+                    name="apellido_completo"
+                    value={editFormData.apellido_completo}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                    placeholder="Ej: González Pérez"
+                  />
+                </div>
+
+                {/* Correo */}
+                <div className="col-span-1">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Correo
+                  </label>
+                  <input
+                    type="email"
+                    name="correo"
+                    value={editFormData.correo}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                    placeholder="Ej: correo@ejemplo.com"
+                  />
+                </div>
+
+                {/* Sexo */}
+                <div className="col-span-1">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Sexo
+                  </label>
+                  <select
+                    name="sexo"
+                    value={editFormData.sexo}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                  >
+                    <option value="">Seleccione...</option>
+                    <option value="M">Masculino</option>
+                    <option value="F">Femenino</option>
+                  </select>
+                </div>
+
+                {/* Fecha de Nacimiento */}
+                <div className="col-span-1">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Fecha de Nacimiento
+                  </label>
+                  <input
+                    type="date"
+                    name="fecha_nacimiento"
+                    value={editFormData.fecha_nacimiento}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Botones */}
+              <div className="flex justify-end gap-4 mt-6">
+                <button
+                  onClick={handleCancelarEditar}
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleGuardarEditar}
+                  className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium shadow-md"
                 >
                   Guardar
                 </button>
