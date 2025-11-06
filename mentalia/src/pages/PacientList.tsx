@@ -25,6 +25,8 @@ interface FormData {
 export default function PacientList() {
   const [pacientes, setPacientes] = useState<Usuario[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [selectedPaciente, setSelectedPaciente] = useState<Usuario | null>(null);
   const [formData, setFormData] = useState<FormData>({
     run: "",
     nombre_completo: "",
@@ -76,8 +78,8 @@ export default function PacientList() {
         },
         body: JSON.stringify({
           ...formData,
-          clave: "default123", // Contraseña por defecto
-          id_cargo: 2, // Cargo de paciente
+          clave: "default123",
+          id_cargo: 2,
         }),
       });
 
@@ -106,7 +108,16 @@ export default function PacientList() {
   };
 
   const handleVer = (id: number) => {
-    alert(`Ver detalles del paciente ${id}`);
+    const paciente = pacientes.find((p) => p.id_usuario === id);
+    if (paciente) {
+      setSelectedPaciente(paciente);
+      setShowViewModal(true);
+    }
+  };
+
+  const handleCerrarVer = () => {
+    setShowViewModal(false);
+    setSelectedPaciente(null);
   };
 
   const handleEditar = (id: number) => {
@@ -348,6 +359,117 @@ export default function PacientList() {
                   className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors font-medium shadow-md"
                 >
                   Guardar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para ver detalles del paciente */}
+      {showViewModal && selectedPaciente && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl mx-4">
+            {/* Header del Modal */}
+            <div className="bg-blue-600 text-white px-6 py-4 rounded-t-lg flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Detalles del Paciente</h2>
+              <button
+                onClick={handleCerrarVer}
+                className="hover:bg-blue-700 rounded-full p-1 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Contenido */}
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Carnet de Identidad */}
+                <div className="col-span-1">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Carnet de Identidad
+                  </label>
+                  <input
+                    type="text"
+                    value={selectedPaciente.run}
+                    readOnly
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
+                  />
+                </div>
+
+                {/* Nombres */}
+                <div className="col-span-1">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Nombres
+                  </label>
+                  <input
+                    type="text"
+                    value={selectedPaciente.nombre_completo}
+                    readOnly
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
+                  />
+                </div>
+
+                {/* Apellidos */}
+                <div className="col-span-1">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Apellidos
+                  </label>
+                  <input
+                    type="text"
+                    value={selectedPaciente.apellido_completo}
+                    readOnly
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
+                  />
+                </div>
+
+                {/* Correo */}
+                <div className="col-span-1">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Correo
+                  </label>
+                  <input
+                    type="email"
+                    value={selectedPaciente.correo}
+                    readOnly
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
+                  />
+                </div>
+
+                {/* Sexo */}
+                <div className="col-span-1">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Sexo
+                  </label>
+                  <input
+                    type="text"
+                    value={selectedPaciente.sexo === "M" ? "Masculino" : "Femenino"}
+                    readOnly
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
+                  />
+                </div>
+
+                {/* Fecha de Nacimiento */}
+                <div className="col-span-1">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Fecha de Nacimiento
+                  </label>
+                  <input
+                    type="text"
+                    value={selectedPaciente.fecha_nacimiento}
+                    readOnly
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
+                  />
+                </div>
+              </div>
+
+              {/* Botón */}
+              <div className="flex justify-end mt-6">
+                <button
+                  onClick={handleCerrarVer}
+                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium shadow-md"
+                >
+                  Cerrar
                 </button>
               </div>
             </div>
