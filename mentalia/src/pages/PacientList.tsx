@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Edit, Trash2, Eye, Search, X } from "lucide-react";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext";
 
 interface Usuario {
   id_usuario: number;
@@ -23,6 +25,7 @@ interface FormData {
 }
 
 export default function PacientList() {
+  const { isAuthenticated } = useAuth();
   const [pacientes, setPacientes] = useState<Usuario[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -46,6 +49,8 @@ export default function PacientList() {
   });
 
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     const listarPacientes = async () => {
       try {
         const response = await fetch("http://localhost:5000/api/usuario");
@@ -60,7 +65,11 @@ export default function PacientList() {
     };
 
     listarPacientes();
-  }, []);
+  }, [isAuthenticated]);
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
 
   const handleAgregarPaciente = () => {
     setShowModal(true);
@@ -272,7 +281,7 @@ export default function PacientList() {
                       <button
                         onClick={() => handleVer(paciente.id_usuario)}
                         className="p-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
-                        title="Ver detalles"
+                        title="Ver historial"
                       >
                         <Search size={18} />
                       </button>

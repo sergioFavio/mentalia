@@ -1,4 +1,5 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom"
+import type { ReactNode } from "react"
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
 //import Layout from "./templates/Layout"
 import HomePage from "./pages/HomePage"
 import ContactPage from "./pages/ContactPage"
@@ -16,33 +17,45 @@ import TechnologyPage from "./pages/TechnologyPage"
 import CardHologramPage from "./pages/CardHologramPage"
 import SpreadFxGallery from "./pages/SpreadFxGallery"
 import LayoutFooter from "./templates/LayoutFooter"
+import { AuthProvider, useAuth } from "./auth/AuthContext"
 
 
+function ProtectedRoute({ children }: { children: ReactNode }) {
+  const { isAuthenticated } = useAuth()
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+
+  return children
+}
 
 function App() {
   
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<LayoutFooter/>}>
-        <Route path="/" element={<HomePage/>}/>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<LayoutFooter/>}>
+          <Route path="/" element={<HomePage/>}/>
 
-        <Route path="/pacient_list" element={<PacientList/>}/>
-        <Route path="/what_we_do" element={<PacientList/>}/>
-        <Route path="/technology" element={<TechnologyPage/>}/>
+          <Route path="/pacient_list" element={<ProtectedRoute><PacientList/></ProtectedRoute>}/>
+          <Route path="/what_we_do" element={<ProtectedRoute><PacientList/></ProtectedRoute>}/>
+          <Route path="/technology" element={<TechnologyPage/>}/>
 
-        <Route path="/card_hologram" element={<CardHologramPage/>}/>
-        <Route path="/spread_fx_gallery" element={<SpreadFxGallery/>}/>
+          <Route path="/card_hologram" element={<CardHologramPage/>}/>
+          <Route path="/spread_fx_gallery" element={<SpreadFxGallery/>}/>
 
-        <Route path="/contact" element={<ContactPage/>}/>
-        <Route path="/login" element={<LoginPage/>}/>
-        <Route path="/register" element={<RegisterPage/>}/>
+          <Route path="/contact" element={<ContactPage/>}/>
+          <Route path="/login" element={<LoginPage/>}/>
+          <Route path="/register" element={<RegisterPage/>}/>
 
-        <Route path="/card_dance" element={<CardDance/>}/>
-        </Route>
-      </Routes>
-    </BrowserRouter>
+          <Route path="/card_dance" element={<CardDance/>}/>
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   )
 }
 

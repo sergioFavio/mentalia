@@ -1,8 +1,10 @@
 from flask import Flask, render_template, jsonify, request
 from flask_cors import CORS
+from flask_bcrypt import Bcrypt
 
 app = Flask(__name__, static_folder="assets") # se agrega otro parametro..
 CORS(app)
+bcrypt = Bcrypt(app)
 
 app.config.from_pyfile('config.py')
 from models import db, ma, Usuarios, usuarios_schema, usuario_schema
@@ -15,8 +17,15 @@ def hello_world():
 
 @app.route('/api/login', methods=["POST"])
 def login():
+  correo = request.json.get("correo") or request.json.get("email")
+  clave = request.json.get("clave") or request.json.get("password")
+
+  usuario = Usuarios.query.filter_by(correo=correo).first()
+  if usuario and bcrypt.check_password_hash(usuario.clave, clave):
+      return usuario_schema.jsonify(usuario)
+
   return jsonify({
-      "message": "Logueado correcto"
+      "error": "Revisa si los datos son correctos"
   })
 
 
