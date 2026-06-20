@@ -20,18 +20,18 @@ const Header = () => {
           <button
             type="button"
             onClick={logout}
-            className="flex items-center justify-center w-10 h-10 rounded-full bg-white bg-opacity-20 hover:bg-opacity-30 transition-all duration-200"
+            className="flex items-center justify-center w-7 h-7 rounded-full bg-white bg-opacity-20 hover:bg-opacity-30 transition-all duration-200"
             title="Cerrar sesión"
           >
-            <LogOut size={22} />
+            <LogOut size={16} />
           </button>
         ) : (
           <Link
             to="/login"
-            className="flex items-center justify-center w-10 h-10 rounded-full bg-white bg-opacity-20 hover:bg-opacity-30 transition-all duration-200"
+            className="flex items-center justify-center w-7 h-7 rounded-full bg-white bg-opacity-20 hover:bg-opacity-30 transition-all duration-200"
             title="Iniciar sesión"
           >
-            <User size={22} />
+            <User size={16} />
           </Link>
         )}
       </div>
