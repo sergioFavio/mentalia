@@ -1,5 +1,15 @@
-import { useEffect, useState } from "react";
-import { Edit, Trash2, Eye, Search, X } from "lucide-react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import {
+  ArrowLeft,
+  Edit,
+  Eye,
+  GitCompare,
+  History,
+  Search,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
@@ -24,6 +34,9 @@ interface FormData {
   fecha_nacimiento: string;
 }
 
+const historyActionIconSize = 15.4;
+const uploadAudioIconSize = 13.2;
+
 export default function PacientList() {
   const pacientesPorPagina = 6;
   const { isAuthenticated } = useAuth();
@@ -34,6 +47,7 @@ export default function PacientList() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [selectedPaciente, setSelectedPaciente] = useState<Usuario | null>(null);
+  const audioInputRef = useRef<HTMLInputElement | null>(null);
   const [formData, setFormData] = useState<FormData>({
     run: "",
     nombre_completo: "",
@@ -248,6 +262,26 @@ export default function PacientList() {
   const handleCerrarHistorial = () => {
     setShowHistoryModal(false);
     setSelectedPaciente(null);
+  };
+
+  const handleSubirAudio = () => {
+    audioInputRef.current?.click();
+  };
+
+  const handleAudioSeleccionado = (event: ChangeEvent<HTMLInputElement>) => {
+    const audio = event.target.files?.[0];
+    if (!audio) return;
+
+    alert(`Audio seleccionado: ${audio.name}`);
+    event.target.value = "";
+  };
+
+  const handleCompararAudios = () => {
+    alert("Selecciona los audios que deseas comparar.");
+  };
+
+  const handleCompararUltimoConPrimero = () => {
+    alert("Se comparara el ultimo audio con el primer audio registrado.");
   };
 
   const handleEditar = (id: number) => {
@@ -782,7 +816,7 @@ export default function PacientList() {
       {showHistoryModal && selectedPaciente && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-2xl w-full max-w-5xl mx-4">
-            <div className="bg-orange-600 text-white px-6 py-4 rounded-t-lg flex justify-between items-center">
+            <div className="bg-orange-600 text-white px-6 py-4 rounded-t-lg flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-center">
               <div>
                 <h2 className="text-2xl font-bold">Historial Médico</h2>
                 <p className="text-sm mt-1">
@@ -790,12 +824,100 @@ export default function PacientList() {
                   {selectedPaciente.apellido_completo}
                 </p>
               </div>
-              <button
-                onClick={handleCerrarHistorial}
-                className="hover:bg-orange-700 rounded-full p-1 transition-colors"
-              >
-                <X size={24} />
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCerrarHistorial}
+                  className="px-3 py-2 bg-teal-500 hover:bg-teal-600 rounded-lg transition-colors text-sm font-medium flex items-center gap-2 shadow-sm"
+                >
+                  <span
+                    className="flex items-center justify-center"
+                    style={{
+                      width: historyActionIconSize,
+                      height: historyActionIconSize,
+                    }}
+                  >
+                    <ArrowLeft size={historyActionIconSize} />
+                  </span>
+                  Regresar
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSubirAudio}
+                  className="px-3 py-2 bg-sky-500 hover:bg-sky-600 rounded-lg transition-colors text-sm font-medium flex items-center gap-2 shadow-sm"
+                >
+                  <span
+                    className="flex items-center justify-center"
+                    style={{
+                      width: uploadAudioIconSize,
+                      height: uploadAudioIconSize,
+                    }}
+                  >
+                    <Upload size={uploadAudioIconSize} />
+                  </span>
+                  Subir audio
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCompararAudios}
+                  className="px-3 py-2 bg-violet-500 hover:bg-violet-600 rounded-lg transition-colors text-sm font-medium flex items-center gap-2 shadow-sm"
+                >
+                  <span
+                    className="flex items-center justify-center"
+                    style={{
+                      width: uploadAudioIconSize,
+                      height: uploadAudioIconSize,
+                    }}
+                  >
+                    <GitCompare size={uploadAudioIconSize} />
+                  </span>
+                  Comparar audios
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCompararUltimoConPrimero}
+                  className="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-colors text-sm font-medium flex items-center gap-2 shadow-sm"
+                >
+                  <span
+                    className="flex items-center justify-center"
+                    style={{
+                      width: uploadAudioIconSize,
+                      height: uploadAudioIconSize,
+                    }}
+                  >
+                    <History size={uploadAudioIconSize} />
+                  </span>
+                  Comparar ultimo con primer audio
+                </button>
+
+                <input
+                  ref={audioInputRef}
+                  type="file"
+                  accept="audio/*"
+                  className="hidden"
+                  onChange={handleAudioSeleccionado}
+                />
+
+                <button
+                  type="button"
+                  onClick={handleCerrarHistorial}
+                  className="bg-indigo-500 hover:bg-indigo-600 rounded-full p-1.5 transition-colors shadow-sm"
+                  aria-label="Cerrar historial medico"
+                >
+                  <span
+                    className="flex items-center justify-center"
+                    style={{
+                      width: historyActionIconSize,
+                      height: historyActionIconSize,
+                    }}
+                  >
+                    <X size={historyActionIconSize} />
+                  </span>
+                </button>
+              </div>
             </div>
 
             <div className="p-6">

@@ -1,7 +1,6 @@
 import Robot from "../asset/ai_model.png";
 import Cielo2 from "../asset/Variant2.png";
 import Cielo1 from "../asset/Default.png";
-import FooterInfo from "../component/home/FooterInfo";
 import { useState, useEffect } from "react";
 
 const HomePage = () => {
