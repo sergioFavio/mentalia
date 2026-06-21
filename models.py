@@ -29,6 +29,23 @@ class Usuarios(db.Model):
     def __repr__(self):
         return '<Name %r>' % self.name
 
+class Paciente(db.Model):
+    id_usuario = db.Column(db.Integer, db.ForeignKey("usuarios.id_usuario"), primary_key=True)
+    id_doc = db.Column(db.Integer, db.ForeignKey("doctor.id_usuario"), nullable=False)
+    direccion = db.Column(db.String(255), nullable=False)
+    ciudad = db.Column(db.String(255), nullable=False)
+    celular = db.Column(db.Integer, nullable=False)
+
+    usuario = db.relationship("Usuarios", backref="paciente")
+
+    def __init__(self, id_usuario, id_doc, direccion, ciudad, celular):
+        self.id_usuario = id_usuario
+        self.id_doc = id_doc
+        self.direccion = direccion
+        self.ciudad = ciudad
+        self.celular = celular
+
+
 class UsuariosSchema(ma.Schema):
     class Meta:
         fields = ("id_usuario", "run", "nombre_completo" , "apellido_completo", "correo", "clave", "sexo", "fecha_nacimiento", "id_cargo")

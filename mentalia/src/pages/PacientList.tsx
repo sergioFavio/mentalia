@@ -69,7 +69,11 @@ export default function PacientList() {
   });
 
   const cargarPacientes = async () => {
-    const response = await fetch("http://localhost:5000/api/usuario");
+    if (!usuario?.id_usuario) return;
+
+    const response = await fetch(
+      `http://localhost:5000/api/doctor/${usuario.id_usuario}/pacientes`
+    );
     if (!response.ok) {
       throw new Error("Error al obtener los datos de pacientes");
     }
@@ -90,7 +94,7 @@ export default function PacientList() {
     };
 
     listarPacientes();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, usuario?.id_usuario]);
 
   const totalPaginas = Math.max(
     1,
@@ -143,7 +147,8 @@ export default function PacientList() {
         ...formData,
         sexo: obtenerValorSexo(formData.sexo),
         clave: "default123",
-        id_cargo: 2,
+        id_cargo: 3,
+        id_doc: usuario?.id_usuario,
       };
 
       const response = await fetch("http://localhost:5000/api/usuario", {
@@ -438,7 +443,7 @@ export default function PacientList() {
               <tr>
                 <th className="px-5 py-1.5 text-left font-semibold">Nombres</th>
                 <th className="px-5 py-1.5 text-left font-semibold">Apellidos</th>
-                <th className="px-5 py-1.5 text-left font-semibold">Edad</th>
+                <th className="px-5 py-1.5 text-left font-semibold">Fecha Nacimiento</th>
                 <th className="px-5 py-1.5 text-left font-semibold">Sexo</th>
                 <th className="px-5 py-1.5 text-center font-semibold">
                   Acciones

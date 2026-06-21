@@ -9,7 +9,7 @@ CORS(app)
 bcrypt = Bcrypt(app)
 
 app.config.from_pyfile('config.py')
-from models import db, ma, Usuarios, usuarios_schema, usuario_schema
+from models import db, ma, Usuarios, Paciente, usuarios_schema, usuario_schema
 db.init_app(app)
 ma.init_app(app)
 
@@ -87,6 +87,18 @@ def listar_usuarios():
     dumped = usuarios_schema.dump(lista)
     return jsonify(dumped)
 
+@app.route('/api/doctor/<int:id_doc>/pacientes')
+def listar_pacientes_por_doctor(id_doc):
+    pacientes = (
+        Usuarios.query
+        .join(Paciente, Paciente.id_usuario == Usuarios.id_usuario)
+        .filter(Paciente.id_doc == id_doc)
+        .filter(Usuarios.id_cargo == 3)
+        .all()
+    )
+    dumped = usuarios_schema.dump(pacientes)
+    return jsonify(dumped)
+
 @app.route('/api/usuario', methods=["POST"])
 def crear_usuario():
     data = request.get_json() or {}
@@ -108,6 +120,23 @@ def crear_usuario():
         )
 
         db.session.add(usuario)
+        db.session.flush()
+
+        if int(data.get("id_cargo", 2)) == 3:
+            id_doc = data.get("id_doc")
+            if not id_doc:
+                db.session.rollback()
+                return jsonify({"error": "El doctor asociado es obligatorio"}), 400
+
+            paciente = Paciente(
+                usuario.id_usuario,
+                int(id_doc),
+                data.get("direccion", "Sin direccion"),
+                data.get("ciudad", "Sin ciudad"),
+                int(data.get("celular", 0)),
+            )
+            db.session.add(paciente)
+
         db.session.commit()
         return usuario_schema.jsonify(usuario), 201
     except Exception as e:
