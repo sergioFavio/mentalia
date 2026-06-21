@@ -60,24 +60,28 @@ const ContactForm = () => {
       return alert("El telefono debe tener solo numeros y puede iniciar con +");
     }
 
-    const response = await sendEmail({
-      ...form,
-      intereses: form.intereses
-        .map(
-          (interesid) =>
-            interests.find((interes) => interes.id === interesid)?.text ?? ""
-        )
-        .join(", "),
-    });
+    try {
+      const response = await sendEmail({
+        ...form,
+        intereses: form.intereses
+          .map(
+            (interesid) =>
+              interests.find((interes) => interes.id === interesid)?.text ?? ""
+          )
+          .join(", "),
+      });
 
-    alert(`${response.status}: ${response.message}`);
-    setForm({
-      name: "",
-      email: "",
-      message: "",
-      telephone: "",
-      intereses: [],
-    });
+      alert(`${response.status}: ${response.message}`);
+      setForm({
+        name: "",
+        email: "",
+        message: "",
+        telephone: "",
+        intereses: [],
+      });
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "No se pudo enviar el correo");
+    }
   };
 
   return (

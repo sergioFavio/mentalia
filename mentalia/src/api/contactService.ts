@@ -6,34 +6,25 @@ interface ContactEmailPayload {
   intereses: string;
 }
 
-const CONTACT_EMAIL = "info@tecnopolis.ai";
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
 
-export const sendEmail = async ({
-  name,
-  email,
-  message,
-  telephone,
-  intereses,
-}: ContactEmailPayload) => {
-  const subject = `Nuevo contacto de ${name}`;
-  const body = [
-    `Nombre: ${name}`,
-    `Correo: ${email}`,
-    `Telefono: ${telephone}`,
-    `Intereses: ${intereses || "No especificados"}`,
-    "",
-    "Mensaje:",
-    message,
-  ].join("\n");
+export const sendEmail = async (payload: ContactEmailPayload) => {
+  const response = await fetch(`${API_URL}/api/contact`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
 
-  const mailto = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(
-    subject
-  )}&body=${encodeURIComponent(body)}`;
+  const data = await response.json().catch(() => ({}));
 
-  window.location.href = mailto;
+  if (!response.ok) {
+    throw new Error(data.error || "No se pudo enviar el correo");
+  }
 
   return {
     status: "OK",
-    message: "Se preparo el correo en tu cliente de email",
+    message: data.message || "Se envio el correo correctamente",
   };
 };

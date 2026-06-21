@@ -1,6 +1,8 @@
 from flask import Flask, render_template, jsonify, request
 from flask_cors import CORS
 from flask_bcrypt import Bcrypt
+from flask_mail import Mail, Message
+
 
 app = Flask(__name__, static_folder="assets") # se agrega otro parametro..
 CORS(app)
@@ -11,9 +13,59 @@ from models import db, ma, Usuarios, usuarios_schema, usuario_schema
 db.init_app(app)
 ma.init_app(app)
 
+
+mail = Mail()
+app.config["MAIL_SERVER"] = "smtp.gmail.com"
+app.config["MAIL_PORT"] = 465
+app.config["MAIL_USE_SSL"] = True
+app.config["MAIL_USERNAME"] = 'serginho61@gmail.com'
+app.config["MAIL_PASSWORD"] = 'bfmmvotlxgjmdqzo'
+mail.init_app(app)
+
 @app.route('/')
 def hello_world():
     return render_template('index.html')
+
+@app.route('/api/contact', methods=["POST"])
+def correo():
+  data = request.get_json() or {}
+  required_fields = ["name", "email", "telephone", "message"]
+  missing_fields = [field for field in required_fields if not str(data.get(field, "")).strip()]
+
+  if missing_fields:
+    return jsonify({
+      "error": "Faltan campos obligatorios",
+      "campos": missing_fields,
+    }), 400
+
+  try:
+    msg = Message(
+      "Mensaje desde Mentalia.online",
+      sender=app.config["MAIL_USERNAME"],
+      recipients=['serginho61@gmail.com'],
+    )
+    content = """
+    <html>
+      <b>Nombre:</b> {0} <br>
+      <b>Email:</b> {1} <br>
+      <b>Whatsapp/Telegram:</b> {2} <br>
+      <b>Mensaje:</b> {3}<br>
+      <b>Tengo interes en:</b> {4}
+    </html>
+    """
+    msg.html = content.format(
+      data["name"],
+      data["email"],
+      data["telephone"],
+      data["message"],
+      data.get("intereses", "No especificados"),
+    )
+    mail.send(msg)
+    return jsonify({"message": "Se envio el correo correctamente"})
+  except Exception as e:
+    return jsonify({"error": f"No se pudo enviar el correo: {str(e)}"}), 500
+
+
 
 @app.route('/api/login', methods=["POST"])
 def login():

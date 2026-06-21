@@ -23,7 +23,7 @@ const Header = () => {
             className="flex items-center justify-center w-7 h-7 rounded-full bg-white bg-opacity-20 hover:bg-opacity-30 transition-all duration-200"
             title="Cerrar sesión"
           >
-            <LogOut size={16} />
+            <LogOut size={15} />
           </button>
         ) : (
           <Link
@@ -31,7 +31,7 @@ const Header = () => {
             className="flex items-center justify-center w-7 h-7 rounded-full bg-white bg-opacity-20 hover:bg-opacity-30 transition-all duration-200"
             title="Iniciar sesión"
           >
-            <User size={16} />
+            <User size={15} />
           </Link>
         )}
       </div>

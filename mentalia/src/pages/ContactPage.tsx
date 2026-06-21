@@ -23,7 +23,7 @@ const ContactPage = () => {
                   <IconMail />
                 </div>
                 <p className="!text-white text-sm md:text-base truncate">
-                  info@tecnopolis.ai
+                  info@mentalia.online
                 </p>
               </button>
 
