@@ -23,7 +23,7 @@ app.config["MAIL_PASSWORD"] = 'bfmmvotlxgjmdqzo'
 mail.init_app(app)
 
 @app.route('/')
-def hello_world():
+def index():
     return render_template('index.html')
 
 @app.route('/api/contact', methods=["POST"])

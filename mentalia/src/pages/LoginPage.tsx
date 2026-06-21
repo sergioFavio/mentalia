@@ -35,7 +35,7 @@ const LoginPage: React.FC = () => {
       }
 
       login(data);
-      navigate("/pacient_list", { replace: true });
+      navigate(Number(data.id_cargo) === 2 ? "/pacient_list" : "/", { replace: true });
     } catch (e) {
       console.error(e);
       setError("No se pudo conectar con el servidor. Intenta nuevamente.");

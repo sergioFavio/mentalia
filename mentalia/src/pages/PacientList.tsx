@@ -39,7 +39,10 @@ const uploadAudioIconSize = 13.2;
 
 export default function PacientList() {
   const pacientesPorPagina = 6;
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, usuario } = useAuth();
+  const nombreUsuarioLogueado = [usuario?.nombre_completo, usuario?.apellido_completo]
+    .filter(Boolean)
+    .join(" ") || usuario?.correo || "Usuario";
   const [pacientes, setPacientes] = useState<Usuario[]>([]);
   const [paginaActual, setPaginaActual] = useState(1);
   const [showModal, setShowModal] = useState(false);
@@ -411,17 +414,17 @@ export default function PacientList() {
             <div className="flex items-center gap-6">
               <div>
                 <p className="text-sm text-gray-600">Doctor</p>
-                <h4 className="text-xl font-bold text-indigo-900">
-                  Anacletto Metralla
+                <h4 className="text-xl font-light tracking-wide text-indigo-900">
+                  {nombreUsuarioLogueado}
                 </h4>
               </div>
-              <h3 className="text-2xl font-bold text-gray-800">
+              <h3 className="text-2xl font-light tracking-wide text-gray-700">
                 Listado de Pacientes
               </h3>
             </div>
             <button
               onClick={handleAgregarPaciente}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-md"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors shadow-md"
             >
               Agregar Paciente
             </button>
