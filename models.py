@@ -29,6 +29,13 @@ class Usuarios(db.Model):
     def __repr__(self):
         return '<Name %r>' % self.name
 
+class Doctor(db.Model):
+    id_usuario = db.Column(db.Integer, db.ForeignKey("usuarios.id_usuario"), primary_key=True)
+
+    def __init__(self, id_usuario):
+        self.id_usuario = id_usuario
+
+
 class Paciente(db.Model):
     id_usuario = db.Column(db.Integer, db.ForeignKey("usuarios.id_usuario"), primary_key=True)
     id_doc = db.Column(db.Integer, db.ForeignKey("doctor.id_usuario"), nullable=False)

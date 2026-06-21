@@ -9,7 +9,7 @@ CORS(app)
 bcrypt = Bcrypt(app)
 
 app.config.from_pyfile('config.py')
-from models import db, ma, Usuarios, Paciente, usuarios_schema, usuario_schema
+from models import db, ma, Usuarios, Doctor, Paciente, usuarios_schema, usuario_schema
 db.init_app(app)
 ma.init_app(app)
 
@@ -128,9 +128,18 @@ def crear_usuario():
                 db.session.rollback()
                 return jsonify({"error": "El doctor asociado es obligatorio"}), 400
 
+            id_doc = int(id_doc)
+            doctor_usuario = Usuarios.query.get(id_doc)
+            if not doctor_usuario or int(doctor_usuario.id_cargo) != 2:
+                db.session.rollback()
+                return jsonify({"error": "El usuario logueado no corresponde a un doctor valido"}), 400
+
+            if not Doctor.query.get(id_doc):
+                db.session.add(Doctor(id_doc))
+
             paciente = Paciente(
                 usuario.id_usuario,
-                int(id_doc),
+                id_doc,
                 data.get("direccion", "Sin direccion"),
                 data.get("ciudad", "Sin ciudad"),
                 int(data.get("celular", 0)),
