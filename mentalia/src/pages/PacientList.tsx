@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import {
   ArrowLeft,
+  BrainCircuit,
   Edit,
   Eye,
   GitCompare,
   History,
   Search,
+  Square,
   Trash2,
   Upload,
   X,
@@ -15,6 +17,7 @@ import { useAuth } from "../auth/AuthContext";
 
 interface Usuario {
   id_usuario: number;
+  id_paciente?: number;
   nombre_completo: string;
   apellido_completo: string;
   correo: string;
@@ -34,6 +37,24 @@ interface FormData {
   fecha_nacimiento: string;
 }
 
+interface AudioPaciente {
+  id_audio?: number;
+  id_paciente?: number;
+  id_usuario?: number;
+  nombre_audio: string;
+  url_audio?: string;
+  ruta_audio?: string;
+  archivo_audio?: string;
+  archivo_existe?: boolean;
+  sentimiento?: string;
+  emocion_resultado?: string;
+  fecha?: string;
+  fecha_audio?: string;
+  fecha_subida?: string;
+  analisis?: string;
+  sugerencia?: string;
+}
+
 const historyActionIconSize = 15.4;
 const uploadAudioIconSize = 13.2;
 
@@ -50,7 +71,10 @@ export default function PacientList() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [selectedPaciente, setSelectedPaciente] = useState<Usuario | null>(null);
+  const [audiosPaciente, setAudiosPaciente] = useState<AudioPaciente[]>([]);
+  const [cargandoAudios, setCargandoAudios] = useState(false);
   const audioInputRef = useRef<HTMLInputElement | null>(null);
+  const audioRefs = useRef<Record<string, HTMLAudioElement | null>>({});
   const [formData, setFormData] = useState<FormData>({
     run: "",
     nombre_completo: "",
@@ -80,6 +104,106 @@ export default function PacientList() {
 
     const pacientes = (await response.json()) as Usuario[];
     setPacientes(pacientes);
+  };
+
+  const extraerAudios = (data: unknown): AudioPaciente[] => {
+    if (Array.isArray(data)) return data as AudioPaciente[];
+
+    if (data && typeof data === "object") {
+      const responseData = data as {
+        audios?: AudioPaciente[];
+        data?: AudioPaciente[];
+      };
+
+      return responseData.audios ?? responseData.data ?? [];
+    }
+
+    return [];
+  };
+
+  const cargarAudiosPaciente = async (paciente: Usuario) => {
+    setCargandoAudios(true);
+
+    try {
+      const idsPaciente = Array.from(
+        new Set(
+          [paciente.id_paciente, paciente.id_usuario].filter(
+            (id): id is number => typeof id === "number"
+          )
+        )
+      );
+
+      const urls = idsPaciente.flatMap((idPaciente) => [
+        `http://localhost:5000/api/audio/paciente/${idPaciente}`,
+        `http://localhost:5000/api/audio?id_paciente=${idPaciente}`,
+      ]);
+
+      urls.push("http://localhost:5000/api/audio");
+
+      for (const url of urls) {
+        try {
+          const response = await fetch(url);
+
+          if (!response.ok) continue;
+
+          const data = await response.json();
+          let audios = extraerAudios(data);
+
+          if (url.endsWith("/api/audio")) {
+            audios = audios.filter((audio) =>
+              idsPaciente.some(
+                (idPaciente) =>
+                  audio.id_paciente === idPaciente ||
+                  audio.id_usuario === idPaciente
+              )
+            );
+          }
+
+          if (audios.length > 0) {
+            setAudiosPaciente(audios);
+            return;
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      setAudiosPaciente([]);
+    } catch (e) {
+      console.error(e);
+      setAudiosPaciente([]);
+    } finally {
+      setCargandoAudios(false);
+    }
+  };
+
+  const obtenerUrlAudio = (audio: AudioPaciente) => {
+    if (audio.archivo_existe === false) return "";
+
+    const rutaAudio = audio.url_audio ?? audio.ruta_audio ?? audio.archivo_audio;
+
+    if (!rutaAudio) return "";
+    if (/^https?:\/\//i.test(rutaAudio)) return rutaAudio;
+
+    const rutaNormalizada = rutaAudio
+      .replace(/^\/+/, "")
+      .split("/")
+      .map((segmento) => encodeURIComponent(segmento))
+      .join("/");
+
+    return `http://localhost:5000/${rutaNormalizada}`;
+  };
+
+  const obtenerClaveAudio = (audio: AudioPaciente, index: number) => {
+    return String(audio.id_audio ?? `${audio.nombre_audio}-${index}`);
+  };
+
+  const handleDetenerAudio = (audioKey: string) => {
+    const audio = audioRefs.current[audioKey];
+    if (!audio) return;
+
+    audio.pause();
+    audio.currentTime = 0;
   };
 
   useEffect(() => {
@@ -259,17 +383,21 @@ export default function PacientList() {
     setSelectedPaciente(null);
   };
 
-  const handleHistorial = (id: number) => {
+  const handleHistorial = async (id: number) => {
     const paciente = pacientes.find((p) => p.id_usuario === id);
     if (paciente) {
       setSelectedPaciente(paciente);
+      setAudiosPaciente([]);
       setShowHistoryModal(true);
+      await cargarAudiosPaciente(paciente);
     }
   };
 
   const handleCerrarHistorial = () => {
+    Object.values(audioRefs.current).forEach((audio) => audio?.pause());
     setShowHistoryModal(false);
     setSelectedPaciente(null);
+    setAudiosPaciente([]);
   };
 
   const handleSubirAudio = () => {
@@ -951,14 +1079,88 @@ export default function PacientList() {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
-                      <td
-                        colSpan={5}
-                        className="px-4 py-8 text-center text-gray-500"
-                      >
-                        No hay audios registrados para este paciente.
-                      </td>
-                    </tr>
+                    {cargandoAudios ? (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="px-4 py-8 text-center text-gray-500"
+                        >
+                          Cargando audios del paciente...
+                        </td>
+                      </tr>
+                    ) : audiosPaciente.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="px-4 py-8 text-center text-gray-500"
+                        >
+                          No hay audios registrados para este paciente.
+                        </td>
+                      </tr>
+                    ) : (
+                      audiosPaciente.map((audio, index) => {
+                        const urlAudio = obtenerUrlAudio(audio);
+                        const audioKey = obtenerClaveAudio(audio, index);
+
+                        return (
+                          <tr
+                            key={audioKey}
+                            className={`border-t ${
+                              index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                            }`}
+                          >
+                            <td className="px-4 py-3 text-gray-800">
+                              {audio.nombre_audio}
+                            </td>
+                            <td className="px-4 py-3">
+                              {urlAudio ? (
+                                <div className="flex items-center gap-2 min-w-64">
+                                  <audio
+                                    ref={(element) => {
+                                      audioRefs.current[audioKey] = element;
+                                    }}
+                                    controls
+                                    preload="none"
+                                    src={urlAudio}
+                                    className="h-9 w-56"
+                                    aria-label={`Reproductor de ${audio.nombre_audio}`}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDetenerAudio(audioKey)}
+                                    className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+                                    title={`Detener ${audio.nombre_audio}`}
+                                    aria-label={`Detener ${audio.nombre_audio}`}
+                                  >
+                                    <Square size={14} fill="currentColor" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-sm text-gray-500">
+                                  Archivo de audio no encontrado
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-gray-700">
+                              {audio.sentimiento ?? audio.emocion_resultado ?? "-"}
+                            </td>
+                            <td className="px-4 py-3 text-gray-700">
+                              {audio.fecha_audio ?? audio.fecha_subida ?? audio.fecha ?? "-"}
+                            </td>
+                            <td className="px-4 py-3 text-gray-700">
+                              <button
+                                type="button"
+                                className="p-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors"
+                                title="Hacer análisis"
+                                aria-label={`Hacer análisis de ${audio.nombre_audio}`}
+                              >
+                                <BrainCircuit size={18} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>

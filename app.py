@@ -1,8 +1,13 @@
-from flask import Flask, render_template, jsonify, request
+import os
+from flask import Flask, render_template, jsonify, request, send_from_directory
 from flask_cors import CORS
 from flask_bcrypt import Bcrypt
 from flask_mail import Mail, Message
+from sqlalchemy import text
 
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads")
 
 app = Flask(__name__, static_folder="assets") # se agrega otro parametro..
 CORS(app)
@@ -26,6 +31,57 @@ mail.init_app(app)
 def index():
     return render_template('index.html')
 
+@app.route('/static/uploads/<path:filename>')
+def servir_audio(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename, as_attachment=False)
+
+@app.route('/api/audio')
+def listar_audios():
+    id_paciente = request.args.get('id_paciente', type=int)
+
+    if id_paciente is None:
+        rows = db.session.execute(text('SELECT * FROM audio')).mappings().all()
+    else:
+        rows = db.session.execute(
+            text('SELECT * FROM audio WHERE id_paciente = :id_paciente'),
+            {'id_paciente': id_paciente},
+        ).mappings().all()
+
+    return jsonify([serializar_audio(row) for row in rows])
+
+@app.route('/api/audio/paciente/<int:id_paciente>')
+def listar_audios_por_paciente(id_paciente):
+    rows = db.session.execute(
+        text('SELECT * FROM audio WHERE id_paciente = :id_paciente'),
+        {'id_paciente': id_paciente},
+    ).mappings().all()
+
+    return jsonify([serializar_audio(row) for row in rows])
+
+def serializar_audio(row):
+    audio = {}
+
+    for key, value in dict(row).items():
+        audio[key] = value if isinstance(value, (str, int, float, bool)) or value is None else str(value)
+
+    archivo_audio = (
+        audio.get('ruta_archivo')
+        or audio.get('url_audio')
+        or audio.get('ruta_audio')
+        or audio.get('archivo_audio')
+        or audio.get('nombre_audio')
+    )
+
+    if archivo_audio:
+        archivo_audio = os.path.basename(archivo_audio)
+
+        if not os.path.splitext(archivo_audio)[1]:
+            archivo_audio = f'{archivo_audio}.wav'
+
+        audio['url_audio'] = f'/static/uploads/{archivo_audio}'
+        audio['archivo_existe'] = os.path.exists(os.path.join(UPLOAD_FOLDER, archivo_audio))
+
+    return audio
 @app.route('/api/contact', methods=["POST"])
 def correo():
   data = request.get_json() or {}
@@ -192,3 +248,5 @@ def actualizar_usuario(id_usuario):
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000)
+
+
