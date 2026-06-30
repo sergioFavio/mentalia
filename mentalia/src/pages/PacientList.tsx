@@ -13,6 +13,13 @@ import {
   X,
 } from "lucide-react";
 import { Navigate } from "react-router-dom";
+import {
+  AUDIO_API_URL,
+  apiFetch,
+  audioApiFetch,
+  toApiAssetUrl,
+  toAudioAssetUrl,
+} from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
 interface Usuario {
@@ -21,7 +28,7 @@ interface Usuario {
   nombre_completo: string;
   apellido_completo: string;
   correo: string;
-  clave: string;
+  clave?: string;
   sexo: string;
   fecha_nacimiento: string;
   id_cargo: number;
@@ -53,6 +60,7 @@ interface AudioPaciente {
   fecha_subida?: string;
   analisis?: string;
   sugerencia?: string;
+  fuente_audio?: "principal" | "audio";
 }
 
 const historyActionIconSize = 15.4;
@@ -73,6 +81,7 @@ export default function PacientList() {
   const [selectedPaciente, setSelectedPaciente] = useState<Usuario | null>(null);
   const [audiosPaciente, setAudiosPaciente] = useState<AudioPaciente[]>([]);
   const [cargandoAudios, setCargandoAudios] = useState(false);
+  const [subiendoAudio, setSubiendoAudio] = useState(false);
   const audioInputRef = useRef<HTMLInputElement | null>(null);
   const audioRefs = useRef<Record<string, HTMLAudioElement | null>>({});
   const [formData, setFormData] = useState<FormData>({
@@ -95,8 +104,9 @@ export default function PacientList() {
   const cargarPacientes = async () => {
     if (!usuario?.id_usuario) return;
 
-    const response = await fetch(
-      `http://localhost:5000/api/doctor/${usuario.id_usuario}/pacientes`
+    const response = await apiFetch(
+      `/api/doctor/${usuario.id_usuario}/pacientes`,
+      { userId: usuario.id_usuario }
     );
     if (!response.ok) {
       throw new Error("Error al obtener los datos de pacientes");
@@ -105,6 +115,24 @@ export default function PacientList() {
     const pacientes = (await response.json()) as Usuario[];
     setPacientes(pacientes);
   };
+
+  const obtenerIdsPaciente = (paciente: Usuario) =>
+    Array.from(
+      new Set(
+        [paciente.id_paciente, paciente.id_usuario].filter(
+          (id): id is number => typeof id === "number"
+        )
+      )
+    );
+
+  const audioPerteneceAlPaciente = (
+    audio: AudioPaciente,
+    idsPaciente: number[]
+  ) =>
+    idsPaciente.some(
+      (idPaciente) =>
+        audio.id_paciente === idPaciente || audio.id_usuario === idPaciente
+    );
 
   const extraerAudios = (data: unknown): AudioPaciente[] => {
     if (Array.isArray(data)) return data as AudioPaciente[];
@@ -121,54 +149,72 @@ export default function PacientList() {
     return [];
   };
 
+  const cargarAudiosDesdeApi = async (
+    urls: string[],
+    idsPaciente: number[],
+    origen: AudioPaciente["fuente_audio"]
+  ) => {
+    const audiosEncontrados: AudioPaciente[] = [];
+
+    for (const url of urls) {
+      try {
+        const response =
+          origen === "audio"
+            ? await audioApiFetch(url, { userId: usuario?.id_usuario })
+            : await apiFetch(url, { userId: usuario?.id_usuario });
+
+        if (!response.ok) continue;
+
+        const data = await response.json();
+        const audios = extraerAudios(data)
+          .map((audio) => ({
+            ...audio,
+            id_paciente: audio.id_paciente ?? audio.id_usuario ?? idsPaciente[0],
+            fuente_audio: origen,
+          }))
+          .filter((audio) => audioPerteneceAlPaciente(audio, idsPaciente));
+
+        audiosEncontrados.push(...audios);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    return audiosEncontrados;
+  };
+
   const cargarAudiosPaciente = async (paciente: Usuario) => {
     setCargandoAudios(true);
 
     try {
-      const idsPaciente = Array.from(
-        new Set(
-          [paciente.id_paciente, paciente.id_usuario].filter(
-            (id): id is number => typeof id === "number"
-          )
-        )
-      );
-
-      const urls = idsPaciente.flatMap((idPaciente) => [
-        `http://localhost:5000/api/audio/paciente/${idPaciente}`,
-        `http://localhost:5000/api/audio?id_paciente=${idPaciente}`,
-      ]);
-
-      urls.push("http://localhost:5000/api/audio");
-
-      for (const url of urls) {
-        try {
-          const response = await fetch(url);
-
-          if (!response.ok) continue;
-
-          const data = await response.json();
-          let audios = extraerAudios(data);
-
-          if (url.endsWith("/api/audio")) {
-            audios = audios.filter((audio) =>
-              idsPaciente.some(
-                (idPaciente) =>
-                  audio.id_paciente === idPaciente ||
-                  audio.id_usuario === idPaciente
-              )
-            );
-          }
-
-          if (audios.length > 0) {
-            setAudiosPaciente(audios);
-            return;
-          }
-        } catch (e) {
-          console.error(e);
-        }
+      if (!usuario?.id_usuario) {
+        setAudiosPaciente([]);
+        return;
       }
 
-      setAudiosPaciente([]);
+      const idsPaciente = obtenerIdsPaciente(paciente);
+
+      const urls = idsPaciente.flatMap((idPaciente) => [
+        `/api/audio/paciente/${idPaciente}`,
+        `/api/audio?id_paciente=${idPaciente}`,
+      ]);
+
+      const [audiosPrincipal, audiosAudio] = await Promise.all([
+        cargarAudiosDesdeApi(urls, idsPaciente, "principal"),
+        cargarAudiosDesdeApi(urls, idsPaciente, "audio"),
+      ]);
+
+      const audiosPorClave = new Map<string, AudioPaciente>();
+      [...audiosPrincipal, ...audiosAudio].forEach((audio, index) => {
+        const clave = String(
+          audio.id_audio ?? `${audio.fuente_audio}-${audio.nombre_audio}-${index}`
+        );
+        if (!audiosPorClave.has(clave)) {
+          audiosPorClave.set(clave, audio);
+        }
+      });
+
+      setAudiosPaciente(Array.from(audiosPorClave.values()));
     } catch (e) {
       console.error(e);
       setAudiosPaciente([]);
@@ -185,13 +231,9 @@ export default function PacientList() {
     if (!rutaAudio) return "";
     if (/^https?:\/\//i.test(rutaAudio)) return rutaAudio;
 
-    const rutaNormalizada = rutaAudio
-      .replace(/^\/+/, "")
-      .split("/")
-      .map((segmento) => encodeURIComponent(segmento))
-      .join("/");
-
-    return `http://localhost:5000/${rutaNormalizada}`;
+    return audio.fuente_audio === "audio"
+      ? toAudioAssetUrl(rutaAudio)
+      : toApiAssetUrl(rutaAudio);
   };
 
   const obtenerClaveAudio = (audio: AudioPaciente, index: number) => {
@@ -275,8 +317,9 @@ export default function PacientList() {
         id_doc: usuario?.id_usuario,
       };
 
-      const response = await fetch("http://localhost:5000/api/usuario", {
+      const response = await apiFetch("/api/usuario", {
         method: "POST",
+        userId: usuario?.id_usuario,
         headers: {
           "Content-Type": "application/json",
         },
@@ -404,12 +447,71 @@ export default function PacientList() {
     audioInputRef.current?.click();
   };
 
-  const handleAudioSeleccionado = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleAudioSeleccionado = async (event: ChangeEvent<HTMLInputElement>) => {
     const audio = event.target.files?.[0];
-    if (!audio) return;
-
-    alert(`Audio seleccionado: ${audio.name}`);
     event.target.value = "";
+
+    if (!audio || !selectedPaciente || !usuario?.id_usuario) return;
+
+    const esAudioValido =
+      audio.type.startsWith("audio/") || /\.(mp3|wav|m4a|ogg|webm)$/i.test(audio.name);
+
+    if (!esAudioValido) {
+      alert("Selecciona un archivo de audio valido.");
+      return;
+    }
+
+    const idsPaciente = obtenerIdsPaciente(selectedPaciente);
+    const idPaciente = idsPaciente[0];
+
+    if (!idPaciente) {
+      alert("No se pudo identificar el paciente para asociar el audio.");
+      return;
+    }
+
+    const payload = new FormData();
+    payload.append("file", audio);
+    payload.append("audio", audio);
+    payload.append("id_paciente", String(idPaciente));
+    payload.append("id_usuario", String(selectedPaciente.id_usuario));
+    payload.append("id_doc", String(usuario.id_usuario));
+    payload.append("descripcion", `Audio subido desde MentaLia: ${audio.name}`);
+
+    setSubiendoAudio(true);
+
+    try {
+      const response = await audioApiFetch("/api/audio", {
+        method: "POST",
+        userId: usuario.id_usuario,
+        body: payload,
+        timeoutMs: 120000,
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          data.detail ??
+            data.error ??
+            data.message ??
+            "No se pudo procesar el audio"
+        );
+      }
+
+      await cargarAudiosPaciente(selectedPaciente);
+      alert("Audio subido. El analisis y la transcripcion fueron solicitados al backend.");
+    } catch (e) {
+      console.error(e);
+      alert(
+        e instanceof TypeError && e.message === "Failed to fetch"
+          ? `No se pudo conectar con el backend de audio (${AUDIO_API_URL}). Verifica que este corriendo con npm run backend:audio o npm run dev:all.`
+          : e instanceof Error
+          ? e.message
+          : "No se pudo subir y procesar el audio"
+      );
+    } finally {
+      setSubiendoAudio(false);
+    }
   };
 
   const handleCompararAudios = () => {
@@ -467,10 +569,11 @@ export default function PacientList() {
         sexo: obtenerValorSexo(editFormData.sexo),
       };
 
-      const response = await fetch(
-        `http://localhost:5000/api/usuario/${selectedPaciente.id_usuario}`,
+      const response = await apiFetch(
+        `/api/usuario/${selectedPaciente.id_usuario}`,
         {
           method: "PUT",
+          userId: usuario?.id_usuario,
           headers: {
             "Content-Type": "application/json",
           },
@@ -532,9 +635,25 @@ export default function PacientList() {
     }
   };
 
-  const handleEliminar = (id: number) => {
+  const handleEliminar = async (id: number) => {
+    if (!usuario?.id_usuario) return;
+
     if (confirm("¿Está seguro de eliminar este paciente?")) {
-      setPacientes((prev) => prev.filter((p) => p.id_usuario !== id));
+      try {
+        const response = await apiFetch(`/api/usuario/${id}`, {
+          method: "DELETE",
+          userId: usuario.id_usuario,
+        });
+
+        if (!response.ok) {
+          throw new Error("Error al eliminar el paciente");
+        }
+
+        setPacientes((prev) => prev.filter((p) => p.id_usuario !== id));
+      } catch (e) {
+        console.error(e);
+        alert(e instanceof Error ? e.message : "Error al eliminar el paciente");
+      }
     }
   };
 
@@ -981,7 +1100,8 @@ export default function PacientList() {
                 <button
                   type="button"
                   onClick={handleSubirAudio}
-                  className="px-3 py-2 bg-sky-500 hover:bg-sky-600 rounded-lg transition-colors text-sm font-medium flex items-center gap-2 shadow-sm"
+                  disabled={subiendoAudio}
+                  className="px-3 py-2 bg-sky-500 hover:bg-sky-600 disabled:bg-sky-300 disabled:cursor-not-allowed rounded-lg transition-colors text-sm font-medium flex items-center gap-2 shadow-sm"
                 >
                   <span
                     className="flex items-center justify-center"
@@ -992,7 +1112,7 @@ export default function PacientList() {
                   >
                     <Upload size={uploadAudioIconSize} />
                   </span>
-                  Subir audio
+                  {subiendoAudio ? "Procesando audio..." : "Subir audio"}
                 </button>
 
                 <button
@@ -1057,6 +1177,12 @@ export default function PacientList() {
             </div>
 
             <div className="p-6">
+              <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                Los resultados generados por IA son orientativos y no
+                constituyen un diagnostico clinico. Deben ser revisados por un
+                profesional de salud antes de tomar decisiones terapeuticas.
+              </div>
+
               <div className="overflow-x-auto rounded-lg border border-gray-200">
                 <table className="w-full">
                   <thead className="bg-gray-100 text-gray-800">

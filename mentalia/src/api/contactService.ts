@@ -6,10 +6,10 @@ interface ContactEmailPayload {
   intereses: string;
 }
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
+import { apiFetch } from "./client";
 
 export const sendEmail = async (payload: ContactEmailPayload) => {
-  const response = await fetch(`${API_URL}/api/contact`, {
+  const response = await apiFetch("/api/contact", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

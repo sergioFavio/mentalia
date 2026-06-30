@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { apiFetch } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
 const LoginPage: React.FC = () => {
@@ -16,7 +17,7 @@ const LoginPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch("http://localhost:5000/api/login", {
+      const response = await apiFetch("/api/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -38,7 +39,11 @@ const LoginPage: React.FC = () => {
       navigate(Number(data.id_cargo) === 2 ? "/pacient_list" : "/", { replace: true });
     } catch (e) {
       console.error(e);
-      setError("No se pudo conectar con el servidor. Intenta nuevamente.");
+      setError(
+        e instanceof DOMException && e.name === "AbortError"
+          ? "El servidor de autenticacion no respondio a tiempo. Verifica que el backend este encendido."
+          : "No se pudo conectar con el servidor. Intenta nuevamente."
+      );
     } finally {
       setIsLoading(false);
     }

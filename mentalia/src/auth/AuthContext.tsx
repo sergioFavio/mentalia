@@ -19,8 +19,19 @@ interface AuthContextValue {
 }
 
 const AUTH_STORAGE_KEY = "mentalia_usuario";
+const AUTH_TTL_MS = 8 * 60 * 60 * 1000;
+
+interface StoredAuth {
+  usuario: Usuario;
+  expiresAt: number;
+}
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+function sanitizeUsuario(usuario: Usuario & { clave?: string }) {
+  const { clave: _clave, ...usuarioSeguro } = usuario;
+  return usuarioSeguro;
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
@@ -31,7 +42,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!storedUsuario) return;
 
     try {
-      setUsuario(JSON.parse(storedUsuario) as Usuario);
+      const storedAuth = JSON.parse(storedUsuario) as StoredAuth | Usuario;
+
+      if ("expiresAt" in storedAuth) {
+        if (Date.now() > storedAuth.expiresAt) {
+          localStorage.removeItem(AUTH_STORAGE_KEY);
+          return;
+        }
+
+        setUsuario(storedAuth.usuario);
+        return;
+      }
+
+      setUsuario(storedAuth as Usuario);
     } catch {
       localStorage.removeItem(AUTH_STORAGE_KEY);
     }
@@ -42,11 +65,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       usuario,
       isAuthenticated: Boolean(usuario),
       login: (usuarioLogueado) => {
-        const { clave: _clave, ...usuarioSeguro } = usuarioLogueado as Usuario & {
-          clave?: string;
+        const usuarioSeguro = sanitizeUsuario(usuarioLogueado);
+        const storedAuth: StoredAuth = {
+          usuario: usuarioSeguro,
+          expiresAt: Date.now() + AUTH_TTL_MS,
         };
 
-        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(usuarioSeguro));
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(storedAuth));
         setUsuario(usuarioSeguro);
       },
       logout: () => {
